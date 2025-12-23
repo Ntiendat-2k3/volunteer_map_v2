@@ -2,38 +2,19 @@ import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  FiDownload,
+  FiExternalLink,
   FiHeart,
   FiUserCheck,
   FiXCircle,
-  FiDownload,
-  FiExternalLink,
 } from "react-icons/fi";
+
 import { useAuth } from "../../contexts/AuthContext";
 import { supportCommitApi } from "../../services/supportCommitApi";
 import { downloadCsv } from "../../utils/exportCsv";
 
-function fmtDate(v) {
-  if (!v) return "—";
-  try {
-    return new Date(v).toLocaleString();
-  } catch {
-    return String(v);
-  }
-}
-
-function statusText(st) {
-  if (st === "PENDING") return "Đang chờ xác nhận";
-  if (st === "CONFIRMED") return "Đã được xác nhận";
-  if (st === "CANCELED") return "Đã huỷ";
-  return st || "—";
-}
-
-function statusBadgeClass(st) {
-  if (st === "CONFIRMED") return "badge badge-neutral";
-  if (st === "PENDING") return "badge badge-outline";
-  if (st === "CANCELED") return "badge badge-outline opacity-70";
-  return "badge badge-outline";
-}
+import SupportCommitFormModal from "./SupportCommitFormModal";
+import { fmtDate, statusBadgeClass, statusText } from "./supportCommitUi";
 
 export default function SupportCommitSection({ post }) {
   const { user } = useAuth();
@@ -41,17 +22,15 @@ export default function SupportCommitSection({ post }) {
 
   const [summary, setSummary] = useState(null);
   const [myCommit, setMyCommit] = useState(null);
-
-  // public list confirmed (ai cũng xem)
   const [publicItems, setPublicItems] = useState([]);
   const [busy, setBusy] = useState(false);
 
-  // modal
   const [open, setOpen] = useState(false);
   const [qty, setQty] = useState(1);
   const [msg, setMsg] = useState("");
 
   const isOwner = !!user && Number(user.id) === Number(post.userId);
+  const isAdmin = user?.role === "ADMIN";
   const canCommit =
     post.approvalStatus === "APPROVED" && post.status === "OPEN";
 
@@ -147,7 +126,6 @@ export default function SupportCommitSection({ post }) {
     }
   };
 
-  // 5 dòng + nếu có dòng 6 => show "..."
   const display5 = useMemo(() => publicItems.slice(0, 5), [publicItems]);
   const hasMore = publicItems.length > 5;
 
@@ -179,7 +157,6 @@ export default function SupportCommitSection({ post }) {
   return (
     <div className="rounded-[28px] border border-slate-200 bg-white shadow-[0_10px_40px_rgba(2,6,23,0.06)]">
       <div className="p-5 sm:p-6">
-        {/* Header */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-base font-extrabold text-slate-900">
@@ -192,8 +169,8 @@ export default function SupportCommitSection({ post }) {
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="badge badge-outline">
-              <FiUserCheck className="mr-1" />
-              Tổng đăng ký: {s.activeCount ?? 0}
+              <FiUserCheck className="mr-1" /> Tổng đăng ký:{" "}
+              {s.activeCount ?? 0}
             </span>
 
             <button
@@ -201,31 +178,31 @@ export default function SupportCommitSection({ post }) {
               disabled={busy}
               onClick={exportPublicCsv}
               title="Xuất Excel"
+              type="button"
             >
               <FiDownload />
             </button>
 
-            <Link
-              className="btn btn-primary btn-sm"
-              to="/support-management"
-              title="Xem chi tiết"
-            >
-              <FiExternalLink />
-            </Link>
+            {(isOwner || isAdmin) && (
+              <Link
+                className="btn btn-primary btn-sm"
+                to={`/support-management?postId=${post.id}`}
+                title="Quản lý / duyệt đăng ký"
+              >
+                <FiExternalLink />
+              </Link>
+            )}
           </div>
         </div>
 
-        {/* Stats (liền mạch, không box riêng) */}
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="badge">Chờ: {s.pendingCount ?? 0}</span>
           <span className="badge">Đã xác nhận: {s.confirmedCount ?? 0}</span>
           <span className="badge">Tổng: {s.activeCount ?? 0}</span>
         </div>
 
-        {/* line */}
         <div className="mt-5 border-t border-slate-200" />
 
-        {/* My commit */}
         <div className="mt-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-sm font-extrabold text-slate-900">
@@ -255,6 +232,7 @@ export default function SupportCommitSection({ post }) {
                       className="btn btn-primary"
                       disabled={busy}
                       onClick={openModal}
+                      type="button"
                     >
                       <FiHeart /> Chỉnh sửa đăng ký
                     </button>
@@ -264,6 +242,7 @@ export default function SupportCommitSection({ post }) {
                       className="btn btn-outline"
                       disabled={busy}
                       onClick={cancelMine}
+                      type="button"
                     >
                       <FiXCircle /> Huỷ
                     </button>
@@ -279,6 +258,7 @@ export default function SupportCommitSection({ post }) {
                       className="btn btn-primary"
                       disabled={busy}
                       onClick={openModal}
+                      type="button"
                     >
                       <FiHeart /> Tôi sẽ hỗ trợ
                     </button>
@@ -293,10 +273,8 @@ export default function SupportCommitSection({ post }) {
           )}
         </div>
 
-        {/* line */}
         <div className="mt-6 border-t border-slate-200" />
 
-        {/* Public list */}
         <div className="mt-5">
           <div className="text-sm font-extrabold text-slate-900">
             Danh sách đăng ký (mới nhất)
@@ -324,7 +302,6 @@ export default function SupportCommitSection({ post }) {
                       {c.message ? c.message : "(Không ghi chú)"}
                     </span>
                   </div>
-
                   <div className="text-xs text-slate-500">
                     {fmtDate(c.createdAt)}
                   </div>
@@ -341,71 +318,16 @@ export default function SupportCommitSection({ post }) {
         </div>
       </div>
 
-      {/* Modal */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-[22px] border border-slate-200 bg-white shadow-xl">
-            <div className="p-5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-lg font-extrabold">Đăng ký hỗ trợ</div>
-                <button
-                  className="btn btn-outline btn-sm"
-                  onClick={() => setOpen(false)}
-                  disabled={busy}
-                >
-                  Đóng
-                </button>
-              </div>
-
-              <form onSubmit={submit} className="mt-4 space-y-4">
-                <div>
-                  <div className="text-sm font-semibold text-slate-700">
-                    Số lượng
-                  </div>
-                  <input
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 outline-none"
-                    type="number"
-                    min={1}
-                    value={qty}
-                    onChange={(e) => setQty(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <div className="text-sm font-semibold text-slate-700">
-                    Ghi chú (tuỳ chọn)
-                  </div>
-                  <textarea
-                    className="mt-2 w-full rounded-2xl border border-slate-200 bg-white p-3 outline-none"
-                    rows={4}
-                    value={msg}
-                    onChange={(e) => setMsg(e.target.value)}
-                    placeholder="Ví dụ: Mình góp 2 thùng mì"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    className="btn btn-outline"
-                    type="button"
-                    onClick={() => setOpen(false)}
-                    disabled={busy}
-                  >
-                    Huỷ
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    type="submit"
-                    disabled={busy}
-                  >
-                    <FiHeart /> Gửi
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
+      <SupportCommitFormModal
+        open={open}
+        busy={busy}
+        qty={qty}
+        setQty={setQty}
+        msg={msg}
+        setMsg={setMsg}
+        onClose={() => setOpen(false)}
+        onSubmit={submit}
+      />
     </div>
   );
 }

@@ -75,3 +75,6 @@ AccessToken: sống ngắn, gửi qua Authorization, dùng để gọi API.
 RefreshToken: sống dài, lưu HttpOnly cookie, dùng để xin accessToken mới khi accessToken hết hạn.
 
 Refresh token được lưu hash trong DB và rotate mỗi lần refresh để tăng bảo mật.
+
+
+- Ctrl + Shift + V: xem usecase diagrams
